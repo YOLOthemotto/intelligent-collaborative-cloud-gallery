@@ -10,6 +10,9 @@ import com.ym.intelligentcollaborativecloudgallery.constant.UserConstant;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureEditRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUpdateRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUploadRequest;
@@ -159,25 +162,34 @@ public class PictureController {
     }
 
     /**
+     * 游标分页获取图片列表（用户使用，适合瀑布流 / 无限滚动）
+     */
+    @PostMapping("/list/cursor/vo")
+    public BaseResponse<PictureCursorVO> listPictureVOByCursor(@RequestBody PictureCursorQueryRequest pictureCursorQueryRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureCursorQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(pictureService.listPictureVOByCursor(pictureCursorQueryRequest, request));
+    }
+
+    /**
      * 编辑图片（用户使用）
      */
     @PostMapping("/edit")
-    public BaseResponse<Boolean> editPicture(@RequestBody PictureUpdateRequest pictureUpdateRequest, HttpServletRequest request) {
-        if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
+    public BaseResponse<Boolean> editPicture(@RequestBody PictureEditRequest pictureEditRequest, HttpServletRequest request) {
+        if (pictureEditRequest == null || pictureEditRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         // 将实体类和 DTO 进行转换
         Picture picture = new Picture();
-        BeanUtils.copyProperties(pictureUpdateRequest, picture);
+        BeanUtils.copyProperties(pictureEditRequest, picture);
         // 注意将 list 转为 string
-        picture.setTags(JSONUtil.toJsonStr(pictureUpdateRequest.getTags()));
+        picture.setTags(JSONUtil.toJsonStr(pictureEditRequest.getTags()));
         // 设置编辑时间
         picture.setEditTime(new Date());
         // 数据校验
         pictureService.validPicture(picture);
         User loginUser = userService.getLoginUser(request);
         // 判断是否存在
-        long id = pictureUpdateRequest.getId();
+        long id = pictureEditRequest.getId();
         Picture oldPicture = pictureService.getById(id);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
         // 仅管理员或本人可编辑
@@ -196,7 +208,7 @@ public class PictureController {
     @GetMapping("/tag_category")
     public BaseResponse<PictureTagCategoryVO> listPictureTagCategory() {
         PictureTagCategoryVO pictureTagCategory = new PictureTagCategoryVO();
-        List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意");
+        List<String> tagList = Arrays.asList("热门", "搞笑", "生活", "高清", "艺术", "校园", "背景", "简历", "创意","流行","音乐");
         List<String> categoryList = Arrays.asList("模板", "电商", "表情包", "素材", "海报");
         pictureTagCategory.setTagList(tagList);
         pictureTagCategory.setCategoryList(categoryList);

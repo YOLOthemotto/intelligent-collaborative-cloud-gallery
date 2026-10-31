@@ -9,10 +9,12 @@ import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
 import com.ym.intelligentcollaborativecloudgallery.manager.FileManager;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUploadRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Picture;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
+import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.UserVO;
 import com.ym.intelligentcollaborativecloudgallery.service.PictureService;
@@ -23,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -229,8 +232,41 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         queryWrapper.orderBy(StrUtil.isNotEmpty(sortField), sortOrder.equals("ascend"), sortField);
         return queryWrapper;
     }
+
+    @Override
+    public PictureCursorVO listPictureVOByCursor(PictureCursorQueryRequest request, HttpServletRequest httpRequest) {
+        int size = request.getSize();
+        ThrowUtils.throwIf(size <= 0 || size > 20, ErrorCode.PARAMS_ERROR, "每次获取数量需在 1-20 之间");
+        // 排序由游标接口自己控制，忽略前端传入的排序字段
+        request.setSortField(null);
+        QueryWrapper<Picture> queryWrapper = getQueryWrapper(request);
+        Long lastCreateTime = request.getLastCreateTime();
+        Long lastId = request.getLastId();
+        if (lastCreateTime != null && lastId != null) {
+            Date lastTime = new Date(lastCreateTime);
+            // (createTime, id) < (lastCreateTime, lastId)
+            queryWrapper.and(qw -> qw.lt("createTime", lastTime)
+                    .or(inner -> inner.eq("createTime", lastTime).lt("id", lastId)));
+        }
+        // createTime 可能重复，加上 id 保证排序唯一
+        queryWrapper.orderByDesc("createTime", "id");
+        // 多查一条用来判断是否还有下一页，避免 count 查询
+        queryWrapper.last("limit " + (size + 1));
+        List<Picture> pictureList = this.list(queryWrapper);
+        boolean hasMore = pictureList.size() > size;
+        if (hasMore) {
+            pictureList = new ArrayList<>(pictureList.subList(0, size));
+        }
+        Page<Picture> page = new Page<>(1, size, 0);
+        page.setRecords(pictureList);
+        PictureCursorVO result = new PictureCursorVO();
+        result.setRecords(getPictureVOPage(page, httpRequest).getRecords());
+        result.setHasMore(hasMore);
+        if (!pictureList.isEmpty()) {
+            Picture last = pictureList.get(pictureList.size() - 1);
+            result.setNextCreateTime(last.getCreateTime().getTime());
+            result.setNextId(last.getId());
+        }
+        return result;
+    }
 }
-
-
-
-

@@ -1,5 +1,7 @@
 package com.ym.intelligentcollaborativecloudgallery.service;
 
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.IService;
@@ -36,4 +38,9 @@ public interface PictureService extends IService<Picture> {
      * @return QueryWrapper对象
      */
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
+
+    /**
+     * 游标分页查询图片（按 createTime、id 倒序）
+     */
+    PictureCursorVO listPictureVOByCursor(PictureCursorQueryRequest request, HttpServletRequest httpRequest);
 }
