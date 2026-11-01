@@ -22,8 +22,16 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 
+/**
+ * @description 文件管理器，负责处理文件上传、校验和临时文件管理等操作。
+ * @author yancenxin
+ * @date 2024/6/20 15:30
+ * @version 1.0
+ * @deprecated 该类已被 PictureUploadTemplate 及其子类替代，建议使用新的上传模板类进行文件上传操作。
+ */
 @Service
 @Slf4j
+@Deprecated
 public class FileManager {
     @Resource
     private CosClientConfig cosClientConfig;

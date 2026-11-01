@@ -10,12 +10,9 @@ import com.ym.intelligentcollaborativecloudgallery.constant.UserConstant;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureEditRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.*;
+import com.ym.intelligentcollaborativecloudgallery.model.enums.PictureReviewStatusEnum;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureQueryRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUpdateRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUploadRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Picture;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureTagCategoryVO;
@@ -45,13 +42,27 @@ public class PictureController {
      * 上传图片（可重新上传）
      */
     @PostMapping("/upload")
-    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+//    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
     public BaseResponse<PictureVO> uploadPicture(
             @RequestPart("file") MultipartFile multipartFile,
             PictureUploadRequest pictureUploadRequest,
             HttpServletRequest request) {
         User loginUser = userService.getLoginUser(request);
         PictureVO pictureVO = pictureService.uploadPicture(multipartFile, pictureUploadRequest, loginUser);
+        return ResultUtils.success(pictureVO);
+    }
+
+    /**
+     * 通过 URL 上传图片（可重新上传）
+     */
+    @PostMapping("/upload/url")
+//    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<PictureVO> uploadPictureByUrl(
+            @RequestBody PictureUploadRequest pictureUploadRequest,
+            HttpServletRequest request) {
+        User loginUser = userService.getLoginUser(request);
+        String fileUrl = pictureUploadRequest.getFileUrl();
+        PictureVO pictureVO = pictureService.uploadPicture(fileUrl,pictureUploadRequest, loginUser);
         return ResultUtils.success(pictureVO);
     }
 
@@ -77,12 +88,13 @@ public class PictureController {
     /**
      * 更新图片（仅管理员可用）
      *
-     * @param pictureUpdateRequest
-     * @return
+     * @param pictureUpdateRequest 图片更新请求
+     * @param request 请求
+     * @return BaseResponse<Boolean>
      */
     @PostMapping("/update")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest) {
+    public BaseResponse<Boolean> updatePicture(@RequestBody PictureUpdateRequest pictureUpdateRequest,HttpServletRequest request) {
         if (pictureUpdateRequest == null || pictureUpdateRequest.getId() <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
@@ -97,6 +109,9 @@ public class PictureController {
         long id = pictureUpdateRequest.getId();
         Picture oldPicture = pictureService.getById(id);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
+        // 补充审核参数
+        User loginUser = userService.getLoginUser(request);
+        pictureService.fillReviewParams(picture, loginUser);
         // 操作数据库
         boolean result = pictureService.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -154,6 +169,8 @@ public class PictureController {
         long size = pictureQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR, "分页大小不能超过20");
+        // 普通用户只能查询审核通过的图片
+        pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
         // 查询数据库
         Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
                 pictureService.getQueryWrapper(pictureQueryRequest));
@@ -167,6 +184,7 @@ public class PictureController {
     @PostMapping("/list/cursor/vo")
     public BaseResponse<PictureCursorVO> listPictureVOByCursor(@RequestBody PictureCursorQueryRequest pictureCursorQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(pictureCursorQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        pictureCursorQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
         return ResultUtils.success(pictureService.listPictureVOByCursor(pictureCursorQueryRequest, request));
     }
 
@@ -188,6 +206,8 @@ public class PictureController {
         // 数据校验
         pictureService.validPicture(picture);
         User loginUser = userService.getLoginUser(request);
+        // 补充审核参数
+        pictureService.fillReviewParams(picture, loginUser);
         // 判断是否存在
         long id = pictureEditRequest.getId();
         Picture oldPicture = pictureService.getById(id);
@@ -213,6 +233,19 @@ public class PictureController {
         pictureTagCategory.setTagList(tagList);
         pictureTagCategory.setCategoryList(categoryList);
         return ResultUtils.success(pictureTagCategory);
+    }
+
+    /**
+     * 图片审核（仅管理员可用）
+     */
+    @PostMapping("/review")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> doPictureReview(@RequestBody PictureReviewRequest pictureReviewRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(pictureReviewRequest == null, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        pictureService.doPictureReview(pictureReviewRequest, loginUser);
+        return ResultUtils.success(true);
+
     }
 
 }

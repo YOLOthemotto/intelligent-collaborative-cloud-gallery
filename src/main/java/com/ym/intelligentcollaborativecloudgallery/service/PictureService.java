@@ -1,6 +1,7 @@
 package com.ym.intelligentcollaborativecloudgallery.service;
 
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureReviewRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -26,7 +27,7 @@ public interface PictureService extends IService<Picture> {
     /**
      * 上传图片
      */
-    PictureVO uploadPicture(MultipartFile file, PictureUploadRequest pictureUploadRequest, User loginUser);
+    PictureVO uploadPicture(Object inputSource, PictureUploadRequest pictureUploadRequest, User loginUser);
 
     PictureVO getPictureVO(Picture picture, HttpServletRequest request);
 
@@ -43,4 +44,16 @@ public interface PictureService extends IService<Picture> {
      * 游标分页查询图片（按 createTime、id 倒序）
      */
     PictureCursorVO listPictureVOByCursor(PictureCursorQueryRequest request, HttpServletRequest httpRequest);
+
+    /**
+     * 图片审核
+     */
+    void doPictureReview(PictureReviewRequest pictureReviewRequest, User loginUser);
+
+    /**
+     * 填充审核参数
+     * @param picture 图片对象
+     * @param loginUser 登录用户对象
+     */
+    void fillReviewParams(Picture picture, User loginUser);
 }
