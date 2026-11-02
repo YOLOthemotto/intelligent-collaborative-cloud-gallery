@@ -2,6 +2,7 @@ package com.ym.intelligentcollaborativecloudgallery.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
+import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -13,10 +14,7 @@ import com.ym.intelligentcollaborativecloudgallery.manager.FileManager;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.FilePictureUpload;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.PictureUploadTemplate;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.UrlPictureUpload;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureQueryRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureReviewRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUploadRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.*;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Picture;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
 import com.ym.intelligentcollaborativecloudgallery.model.enums.PictureReviewStatusEnum;
@@ -27,10 +25,16 @@ import com.ym.intelligentcollaborativecloudgallery.service.PictureService;
 import com.ym.intelligentcollaborativecloudgallery.mapper.PictureMapper;
 import com.ym.intelligentcollaborativecloudgallery.service.UserService;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -45,6 +49,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @AllArgsConstructor
+@Slf4j
 public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         implements PictureService {
 
@@ -107,7 +112,12 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         var uploadPictureResult = pictureUploadTemplate.uploadPicture(inputSource, uploadPathPrefix);
         // 构造Picture对象
         Picture picture = new Picture();
-        picture.setName(uploadPictureResult.getPicName());
+        // 支持外层传递的名称
+        String picName = uploadPictureResult.getPicName();
+        if (pictureUploadRequest != null && StrUtil.isNotBlank(pictureUploadRequest.getPicName())) {
+            picName = pictureUploadRequest.getPicName();
+        }
+        picture.setName(picName);
         picture.setUrl(uploadPictureResult.getUrl());
         picture.setPicSize(uploadPictureResult.getPicSize());
         picture.setPicWidth(uploadPictureResult.getPicWidth());
@@ -334,6 +344,65 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             // 普通用户上传的图片需要审核
             picture.setReviewStatus(PictureReviewStatusEnum.REVIEWING.getValue());
         }
+    }
+
+    @Override
+    public Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser) {
+        // 校验参数
+        String searchText = pictureUploadByBatchRequest.getSearchText();
+        Integer count = pictureUploadByBatchRequest.getCount();
+        ThrowUtils.throwIf(count >= 30, ErrorCode.PARAMS_ERROR, "批量导入数量不能超过30");
+        // 抓取内容
+        String fetchUrl = String.format("https://cn.bing.com/images/async?q=%s&mmasync=1", searchText);
+        Document document;
+        try {
+            document = Jsoup.connect(fetchUrl).get();
+        } catch (IOException e) {
+            log.error("抓取图片失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "抓取图片失败");
+        }
+        // 解析内容
+        Element div = document.getElementsByClass("dgControl").first();
+        if (ObjUtil.isNull(div)) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "获取元素失败");
+        }
+        Elements imgElementList = div.select("img.mimg");
+        // 遍历元素上传图片
+        int uploadCount = 0;
+        for (Element element : imgElementList) {
+            String fileUrl = element.attr("src");
+            if (StrUtil.isBlank(fileUrl)) {
+                log.info("第 {} 张图片没有 src 属性，跳过", uploadCount + 1);
+                continue;
+            }
+            // 处理图片地址，防止转译或者和对象存储冲突的问题
+            int questionMarkIndex = fileUrl.indexOf("?");
+            if (questionMarkIndex != -1) {
+                fileUrl = fileUrl.substring(0, questionMarkIndex);
+            }
+            try {
+                // 上传图片
+                PictureUploadRequest pictureUploadRequest = new PictureUploadRequest();
+                pictureUploadRequest.setFileUrl(fileUrl);
+                String namePrefix = pictureUploadByBatchRequest.getNamePrefix();
+                if (StrUtil.isNotBlank(namePrefix)) {
+                    pictureUploadRequest.setPicName(namePrefix + "_" + (uploadCount + 1));
+                } else {
+                    pictureUploadRequest.setPicName(searchText + "_" + (uploadCount + 1));
+                }
+                PictureVO pictureVO = this.uploadPicture(fileUrl, pictureUploadRequest, loginUser);
+                log.info("第 {} 张图片上传成功，图片ID：{}", uploadCount + 1, pictureVO.getId());
+                uploadCount++;
+            } catch (Exception e) {
+                log.error("第 {} 张图片上传失败，图片地址：{}", uploadCount + 1, fileUrl, e);
+                continue;
+            }
+            // 达到抓取数量，停止抓取
+            if (uploadCount >= count) {
+                break;
+            }
+        }
+        return uploadCount;
     }
 }
 

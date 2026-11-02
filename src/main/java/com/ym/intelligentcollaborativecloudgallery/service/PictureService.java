@@ -1,18 +1,13 @@
 package com.ym.intelligentcollaborativecloudgallery.service;
 
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureCursorQueryRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureReviewRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.*;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.IService;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureQueryRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.PictureUploadRequest;
-import com.ym.intelligentcollaborativecloudgallery.model.dto.user.UserQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Picture;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureVO;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -56,4 +51,11 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser 登录用户对象
      */
     void fillReviewParams(Picture picture, User loginUser);
+
+    /**
+     * 批量导入图片
+     * @param pictureUploadByBatchRequest 批量导入图片请求对象
+     * @param loginUser 登录用户对象
+     */
+    Integer uploadPictureByBatch(PictureUploadByBatchRequest pictureUploadByBatchRequest, User loginUser);
 }
