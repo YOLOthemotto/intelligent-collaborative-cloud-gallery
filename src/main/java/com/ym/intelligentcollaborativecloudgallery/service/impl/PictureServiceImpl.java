@@ -4,9 +4,13 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.ym.intelligentcollaborativecloudgallery.cache.CacheService;
+import com.ym.intelligentcollaborativecloudgallery.cache.CacheType;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
@@ -31,10 +35,13 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.springframework.stereotype.Service;
+import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -56,6 +63,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private final UserService userService;
     private final FilePictureUpload filePictureUpload;
     private final UrlPictureUpload urlPictureUpload;
+    private final CacheService cacheService;
+
+    private static final TypeReference<Page<PictureVO>> PICTURE_VO_PAGE_TYPE = new TypeReference<>() {};
 
     @Override
     public void validPicture(Picture picture) {
@@ -182,6 +192,23 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         });
         pictureVOPage.setRecords(pictureVOList);
         return pictureVOPage;
+    }
+
+    @Override
+    public Page<PictureVO> listPictureVOByPageWithCache(PictureQueryRequest request,
+                                                        HttpServletRequest httpRequest,
+                                                        CacheType cacheType) {
+        String queryCondition = JSONUtil.toJsonStr(request);
+        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes(StandardCharsets.UTF_8));
+        String cacheKey = "yanPicture:listPictureVOByPage:" + hashKey;
+        long current = request.getCurrent();
+        long size = request.getPageSize();
+
+        return cacheService.getOrLoad(cacheKey, cacheType, Duration.ofMinutes(1), Duration.ofMinutes(5),
+                PICTURE_VO_PAGE_TYPE, () -> {
+                    Page<Picture> picturePage = this.page(new Page<>(current, size), getQueryWrapper(request));
+                    return getPictureVOPage(picturePage, httpRequest);
+                });
     }
 
 
@@ -405,5 +432,3 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         return uploadCount;
     }
 }
-
-

@@ -2,10 +2,8 @@ package com.ym.intelligentcollaborativecloudgallery.controller;
 
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.ym.intelligentcollaborativecloudgallery.annotation.AuthCheck;
+import com.ym.intelligentcollaborativecloudgallery.cache.CacheType;
 import com.ym.intelligentcollaborativecloudgallery.common.BaseResponse;
 import com.ym.intelligentcollaborativecloudgallery.common.DeleteRequest;
 import com.ym.intelligentcollaborativecloudgallery.common.ResultUtils;
@@ -25,9 +23,6 @@ import com.ym.intelligentcollaborativecloudgallery.service.UserService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.util.DigestUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -35,7 +30,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
@@ -44,16 +38,6 @@ import java.util.concurrent.TimeUnit;
 public class PictureController {
     private final PictureService pictureService;
     private final UserService userService;
-    private final StringRedisTemplate stringRedisTemplate;
-
-    /**
-     *  本地缓存
-     */
-    private final Cache<String, String> LOCAL_CACHE = Caffeine.newBuilder()
-            .initialCapacity(1024)
-            .maximumSize(10_000L)
-            .expireAfterWrite(5, TimeUnit.MINUTES)
-            .build();
 
     /**
      * 上传图片（可重新上传）
@@ -200,45 +184,13 @@ public class PictureController {
      */
     @PostMapping("/list/page/vo/cache")
     public BaseResponse<Page<PictureVO>> listPictureVOByPageWithCache(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
-        long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR, "分页大小不能超过20");
         // 普通用户只能查询审核通过的图片
         pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-        // 查询缓存 缓存中没有，再查询数据库
-        // 构建缓存 key
-        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
-        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
-        String redisKey = String.format("yanPicture:listPictureVOByPage:%s", hashKey);
-        // 1.先从本地缓存中查询
-        String localCachedValue = LOCAL_CACHE.getIfPresent(redisKey);
-        if (localCachedValue != null) {
-            // 本地缓存中有数据，直接返回
-            Page<PictureVO> pictureVOPage = JSONUtil.toBean(localCachedValue, Page.class);
-            return ResultUtils.success(pictureVOPage);
-        }
-        // 2.本地缓存未命中，查询缓存
-        ValueOperations<String, String> opsForValue = stringRedisTemplate.opsForValue();
-        String cachedValue = opsForValue.get(redisKey);
-        if (cachedValue != null) {
-            // 缓存命中更新本地缓存
-            LOCAL_CACHE.put(redisKey, cachedValue);
-            // 缓存中有数据，直接返回
-            Page<PictureVO> pictureVOPage = JSONUtil.toBean(cachedValue, Page.class);
-            return ResultUtils.success(pictureVOPage);
-        }
-        // 3.查询数据库
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-                pictureService.getQueryWrapper(pictureQueryRequest));
-        Page<PictureVO> pictureVOPage = pictureService.getPictureVOPage(picturePage, request);
-        // 将结果缓存到 Redis 中，设置过期时间为 5-10 分钟
-        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
-        // 5-10 分钟
-        long cacheExpireTime = 5 + (long) (Math.random() * 5);
-        opsForValue.set(redisKey, cacheValue, cacheExpireTime * 60);
-        // 更新本地缓存
-        LOCAL_CACHE.put(redisKey, cacheValue);
+        Page<PictureVO> pictureVOPage = pictureService.listPictureVOByPageWithCache(
+                pictureQueryRequest, request, CacheType.MULTI_LEVEL);
         return ResultUtils.success(pictureVOPage);
     }
 
@@ -247,31 +199,13 @@ public class PictureController {
      */
     @PostMapping("/list/page/vo/localCache")
     public BaseResponse<Page<PictureVO>> listPictureVOByPageWithLocalCache(@RequestBody PictureQueryRequest pictureQueryRequest, HttpServletRequest request) {
-        long current = pictureQueryRequest.getCurrent();
         long size = pictureQueryRequest.getPageSize();
         // 限制爬虫
         ThrowUtils.throwIf(size > 20, ErrorCode.PARAMS_ERROR, "分页大小不能超过20");
         // 普通用户只能查询审核通过的图片
         pictureQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
-        // 查询缓存 缓存中没有，再查询数据库
-        // 构建缓存 key
-        String queryCondition = JSONUtil.toJsonStr(pictureQueryRequest);
-        String hashKey = DigestUtils.md5DigestAsHex(queryCondition.getBytes());
-        String cacheKey = String.format("listPictureVOByPage:%s", hashKey);
-        // 查询缓存
-        String cachedValue = LOCAL_CACHE.getIfPresent(cacheKey);
-        if (cachedValue != null) {
-            // 缓存中有数据，直接返回
-            Page<PictureVO> pictureVOPage = JSONUtil.toBean(cachedValue, Page.class);
-            return ResultUtils.success(pictureVOPage);
-        }
-        // 查询数据库
-        Page<Picture> picturePage = pictureService.page(new Page<>(current, size),
-                pictureService.getQueryWrapper(pictureQueryRequest));
-        Page<PictureVO> pictureVOPage = pictureService.getPictureVOPage(picturePage, request);
-        // 将结果缓存到 Redis 中，设置过期时间为 5-10 分钟
-        String cacheValue = JSONUtil.toJsonStr(pictureVOPage);
-        LOCAL_CACHE.put(cacheKey, cacheValue);
+        Page<PictureVO> pictureVOPage = pictureService.listPictureVOByPageWithCache(
+                pictureQueryRequest, request, CacheType.LOCAL);
         return ResultUtils.success(pictureVOPage);
     }
 

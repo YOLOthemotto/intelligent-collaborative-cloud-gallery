@@ -5,6 +5,7 @@ import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.IService;
+import com.ym.intelligentcollaborativecloudgallery.cache.CacheType;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Picture;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureVO;
@@ -27,6 +28,13 @@ public interface PictureService extends IService<Picture> {
     PictureVO getPictureVO(Picture picture, HttpServletRequest request);
 
     Page<PictureVO> getPictureVOPage(Page<Picture> picturePage, HttpServletRequest request);
+
+    /**
+     * 分页查询图片并按指定缓存层级缓存结果。
+     */
+    Page<PictureVO> listPictureVOByPageWithCache(PictureQueryRequest request,
+                                                 HttpServletRequest httpRequest,
+                                                 CacheType cacheType);
 
     /**
      * 获取QueryWrapper对象
