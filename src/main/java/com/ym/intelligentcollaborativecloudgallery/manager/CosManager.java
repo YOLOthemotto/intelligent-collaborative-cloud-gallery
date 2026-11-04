@@ -1,5 +1,6 @@
 package com.ym.intelligentcollaborativecloudgallery.manager;
 
+import cn.hutool.core.io.FileUtil;
 import com.qcloud.cos.COSClient;
 import com.qcloud.cos.exception.CosClientException;
 import com.qcloud.cos.exception.CosServiceException;
@@ -12,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class CosManager {
@@ -62,6 +65,15 @@ public class CosManager {
         PicOperations picOperations = new PicOperations();
         // 1 表示提取图片信息，0 表示不提取
         picOperations.setIsPicInfo(1);
+        // 图片压缩(转成 webp 格式)
+        String webpKey = FileUtil.mainName(key) + ".webp";
+        PicOperations.Rule compressRule = new PicOperations.Rule();
+        compressRule.setFileId(webpKey);
+        compressRule.setBucket(cosClientConfig.getBucketName());
+        compressRule.setRule("imageMogr2/format/webp");
+        List<PicOperations.Rule> rules = new ArrayList<>();
+        rules.add(compressRule);
+        picOperations.setRules(rules);
         putObjectRequest.setPicOperations(picOperations);
         return cosClient.putObject(putObjectRequest);
     }
