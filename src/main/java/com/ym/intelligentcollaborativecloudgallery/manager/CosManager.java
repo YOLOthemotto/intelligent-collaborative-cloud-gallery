@@ -67,11 +67,20 @@ public class CosManager {
         picOperations.setIsPicInfo(1);
         // 图片压缩(转成 webp 格式)
         String webpKey = FileUtil.mainName(key) + ".webp";
+        List<PicOperations.Rule> rules = new ArrayList<>();
         PicOperations.Rule compressRule = new PicOperations.Rule();
         compressRule.setFileId(webpKey);
         compressRule.setBucket(cosClientConfig.getBucketName());
         compressRule.setRule("imageMogr2/format/webp");
-        List<PicOperations.Rule> rules = new ArrayList<>();
+        // 缩略图处理 仅对大于 20KB 的图片生成缩略图
+        if (file.length() > 20 * 1024) {
+            PicOperations.Rule thumbnailRule = new PicOperations.Rule();
+            String thumbnailKey = FileUtil.mainName(key) + "_thumbnail" + FileUtil.getSuffix(key);
+            thumbnailRule.setFileId(thumbnailKey);
+            thumbnailRule.setBucket(cosClientConfig.getBucketName());
+            thumbnailRule.setRule(String.format("imageMogr2/thumbnail/%sx%s>",256,256));
+            rules.add(thumbnailRule);
+        }
         rules.add(compressRule);
         picOperations.setRules(rules);
         putObjectRequest.setPicOperations(picOperations);

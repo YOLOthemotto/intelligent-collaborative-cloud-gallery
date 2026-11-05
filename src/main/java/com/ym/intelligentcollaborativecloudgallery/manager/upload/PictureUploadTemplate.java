@@ -55,7 +55,9 @@ public abstract class PictureUploadTemplate {
             if (objectList != null && !objectList.isEmpty()) {
                 // 处理 objectList
                 CIObject compressedCiObject = objectList.get(0);
-                return buildResult(originalFilename, compressedCiObject);
+                CIObject thumbnailCiObject = objectList.size() > 1 ? objectList.get(1) : null;
+                // 5.封装返回结果
+                return buildResult(originalFilename, compressedCiObject, thumbnailCiObject, imageInfo);
             }
             // 5.封装返回结果
             return buildResult(putObjectResult, uploadPath, originalFilename, file, imageInfo);
@@ -75,7 +77,7 @@ public abstract class PictureUploadTemplate {
      * @param compressedCiObject 压缩后的图片对象
      * @return UploadPictureResult 上传图片结果
      */
-    private UploadPictureResult buildResult(String originalFilename, CIObject compressedCiObject) {
+    private UploadPictureResult buildResult(String originalFilename, CIObject compressedCiObject, CIObject thumbnailCiObject,ImageInfo imageInfo) {
         int picWidth = compressedCiObject.getWidth();
         int picHeight = compressedCiObject.getHeight();
         // 计算图片比例，保留两位小数
@@ -88,7 +90,8 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicWidth(picWidth);
         uploadPictureResult.setPicHeight(picHeight);
         uploadPictureResult.setPicScale(picScale);
-        uploadPictureResult.setPicFormat(compressedCiObject.getFormat());
+        uploadPictureResult.setPicFormat(imageInfo.getFormat());
+        uploadPictureResult.setThumbnailUrl(thumbnailCiObject != null ? cosClientConfig.getHost() + '/' + thumbnailCiObject.getKey() : null);
         return uploadPictureResult;
     }
 
