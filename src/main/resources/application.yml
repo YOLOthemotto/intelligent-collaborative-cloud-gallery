@@ -2,6 +2,10 @@ server:
   port: 8123
   servlet:
     context-path: /api
+    # cookie 30天过期
+    session:
+      cookie:
+        max-age: 2592000
 spring:
   application:
     name: intelligent-collaborative-clound-gallery
@@ -16,20 +20,25 @@ spring:
     password: 123456
     database: 0
     connect-timeout: 10000
+  # Session配置
+  session:
+    store-type: redis
+    # Session过期时间，单位为秒 30 天
+    timeout: 2592000
   # 文件上传开放更大的限制
   servlet:
     multipart:
       max-file-size: 10MB
 mybatis-plus:
-    configuration:
-        map-underscore-to-camel-case: false
-        # 打印SQL日志(开发环境使用，生产环境请关闭)
-        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-    global-config:
-      db-config:
-        logic-delete-field: isDeleted
-        logic-delete-value: 1
-        logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: false
+    # 打印SQL日志(开发环境使用，生产环境请关闭)
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 # 接口文档配置
 knife4j:
   enable: true
