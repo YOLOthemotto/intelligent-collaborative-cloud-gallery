@@ -114,9 +114,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
             if (spaceLevel == null) {
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "空间级别不能为空");
             }
-            if (spaceType == null) {
-                throw new BusinessException(ErrorCode.PARAMS_ERROR, "空间类别不能为空");
-            }
+//            if (spaceType == null) {
+//                throw new BusinessException(ErrorCode.PARAMS_ERROR, "空间类别不能为空");
+//            }
         }
         // 修改数据时，空间名称进行校验
         if (StrUtil.isNotBlank(spaceName) && spaceName.length() > 30) {
@@ -127,9 +127,9 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "空间级别不存在");
         }
         // 修改数据时，空间类别进行校验
-        if (spaceType != null && spaceTypeEnum == null) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "空间类别不存在");
-        }
+//        if (spaceType != null && spaceTypeEnum == null) {
+//            throw new BusinessException(ErrorCode.PARAMS_ERROR, "空间类别不存在");
+//        }
     }
 
     /**
