@@ -44,6 +44,22 @@ public interface PictureService extends IService<Picture> {
     QueryWrapper<Picture> getQueryWrapper(PictureQueryRequest pictureQueryRequest);
 
     /**
+     * 编辑图片
+     *
+     * @param pictureEditRequest
+     * @param loginUser
+     */
+    void editPicture(PictureEditRequest pictureEditRequest, User loginUser);
+
+    /**
+     * 删除图片
+     *
+     * @param pictureId
+     * @param loginUser
+     */
+    void deletePicture(long pictureId, User loginUser);
+
+    /**
      * 游标分页查询图片（按 createTime、id 倒序）
      */
     PictureCursorVO listPictureVOByCursor(PictureCursorQueryRequest request, HttpServletRequest httpRequest);
@@ -72,4 +88,11 @@ public interface PictureService extends IService<Picture> {
      * @param oldPicture 旧图片对象
      */
     void clearPictureFile(Picture oldPicture);
+
+    /**
+     * 校验空间图片的权限
+     * @param picture 图片对象
+     * @param loginUser 登录用户对象
+     */
+    void checkPictureAuth(Picture picture, User loginUser);
 }
