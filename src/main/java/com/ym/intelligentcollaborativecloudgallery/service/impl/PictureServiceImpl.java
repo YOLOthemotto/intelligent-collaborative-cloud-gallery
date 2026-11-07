@@ -14,6 +14,7 @@ import com.ym.intelligentcollaborativecloudgallery.cache.CacheType;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
+import com.ym.intelligentcollaborativecloudgallery.manager.CosManager;
 import com.ym.intelligentcollaborativecloudgallery.manager.FileManager;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.FilePictureUpload;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.PictureUploadTemplate;
@@ -34,6 +35,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -64,6 +66,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private final FilePictureUpload filePictureUpload;
     private final UrlPictureUpload urlPictureUpload;
     private final CacheService cacheService;
+    private final CosManager cosManager;
 
     private static final TypeReference<Page<PictureVO>> PICTURE_VO_PAGE_TYPE = new TypeReference<>() {};
 
@@ -431,5 +434,24 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             }
         }
         return uploadCount;
+    }
+
+    @Async
+    @Override
+    public void clearPictureFile(Picture oldPicture) {
+        // 判断该图片是否被多条记录引用
+        String pictureUrl = oldPicture.getUrl();
+        long count = this.lambdaQuery().eq(Picture::getUrl, pictureUrl).count();
+        if (count > 1) {
+            return;
+        }
+        // 删除图片文件
+        cosManager.deleteObject(pictureUrl);
+        // 删除缩略图文件
+        String thumbnailUrl = oldPicture.getThumbnailUrl();
+        if (StrUtil.isNotBlank(thumbnailUrl)) {
+            cosManager.deleteObject(thumbnailUrl);
+        }
+
     }
 }

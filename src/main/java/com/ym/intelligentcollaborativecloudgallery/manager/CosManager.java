@@ -86,4 +86,14 @@ public class CosManager {
         putObjectRequest.setPicOperations(picOperations);
         return cosClient.putObject(putObjectRequest);
     }
+
+    /**
+     * 删除对象
+     * @param key 文件在 COS 中的路径
+     * @throws CosClientException  客户端异常
+     * @throws CosServiceException 服务端异常
+     */
+    public void deleteObject(String key) throws CosClientException, CosServiceException {
+        cosClient.deleteObject(cosClientConfig.getBucketName(), key);
+    }
 }

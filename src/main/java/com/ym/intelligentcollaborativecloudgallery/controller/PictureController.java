@@ -67,6 +67,12 @@ public class PictureController {
         return ResultUtils.success(pictureVO);
     }
 
+    /**
+     * 删除图片（仅管理员可用）
+     * @param deleteRequest 删除请求对象
+     * @param request 请求对象
+     * @return BaseResponse<Boolean>
+     */
     @PostMapping("/delete")
     public BaseResponse<Boolean> deletePicture(@RequestBody DeleteRequest deleteRequest
             , HttpServletRequest request) {
@@ -83,6 +89,8 @@ public class PictureController {
         }
         boolean result = pictureService.removeById(id);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
+        // 删除图片文件
+        pictureService.clearPictureFile(oldPicture);
         return ResultUtils.success(true);
     }
 
