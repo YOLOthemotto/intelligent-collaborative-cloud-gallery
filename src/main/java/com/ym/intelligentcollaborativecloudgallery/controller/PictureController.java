@@ -231,7 +231,18 @@ public class PictureController {
     @PostMapping("/list/cursor/vo")
     public BaseResponse<PictureCursorVO> listPictureVOByCursor(@RequestBody PictureCursorQueryRequest pictureCursorQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(pictureCursorQueryRequest == null, ErrorCode.PARAMS_ERROR);
-        pictureCursorQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+        // 空间权限校验
+        Long spaceId = pictureCursorQueryRequest.getSpaceId();
+        if (spaceId == null) {
+            // 普通用户只能查询审核通过的图片
+            pictureCursorQueryRequest.setReviewStatus(PictureReviewStatusEnum.PASS.getValue());
+            pictureCursorQueryRequest.setNullSpaceId(true);
+        } else {
+            User loginUser = userService.getLoginUser(request);
+            Space space = spaceService.getById(spaceId);
+            ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR, "空间不存在");
+            spaceService.checkSpaceAuth(loginUser, space);
+        }
         return ResultUtils.success(pictureService.listPictureVOByCursor(pictureCursorQueryRequest, request));
     }
 

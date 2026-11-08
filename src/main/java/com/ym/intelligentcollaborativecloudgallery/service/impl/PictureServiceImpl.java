@@ -150,11 +150,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 按照用户ID创建文件夹，避免不同用户上传的图片重名 -> 按照空间划分目录
         String uploadPathPrefix;
         if (ref.spaceId != null) {
-            // 公共空间
-            uploadPathPrefix = String.format("public/%s", loginUser.getId());
-        } else {
             // 特殊空间
             uploadPathPrefix = String.format("space/%s", ref.spaceId);
+        } else {
+            // 公共空间
+            uploadPathPrefix = String.format("public/%s", loginUser.getId());
         }
         // 根据输入源类型选择上传方式
         PictureUploadTemplate pictureUploadTemplate = filePictureUpload;
@@ -190,12 +190,13 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         transactionTemplate.execute(status -> {
             boolean result = this.saveOrUpdate(picture);
             ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR, "图片上传失败");
-            // 更新空间的使用额度
-            boolean update = spaceService.lambdaUpdate()
-                    .eq(Space::getId, ref.spaceId)
-                    .setSql("total_count = total_count + 1, total_size = total_size + " + picture.getPicSize())
-                    .update();
-            ThrowUtils.throwIf(!update, ErrorCode.OPERATION_ERROR, "空间使用额度更新失败");
+            if (ref.spaceId != null) {
+                boolean update = spaceService.lambdaUpdate()
+                        .eq(Space::getId, ref.spaceId)
+                        .setSql("totalCount = totalCount + 1, totalSize = totalSize + " + picture.getPicSize())
+                        .update();
+                ThrowUtils.throwIf(!update, ErrorCode.OPERATION_ERROR, "空间使用额度更新失败");
+            }
             return null;
         });
         return PictureVO.objToVo(picture);

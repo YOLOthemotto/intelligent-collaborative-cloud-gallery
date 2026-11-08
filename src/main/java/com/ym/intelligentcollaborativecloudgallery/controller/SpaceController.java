@@ -124,6 +124,8 @@ public class SpaceController {
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
         SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
         User loginUser = userService.getLoginUser(request);
+        // 仅本人或管理员可查看
+        spaceService.checkSpaceAuth(loginUser, space);
         // 获取封装类
         return ResultUtils.success(spaceVO);
     }
