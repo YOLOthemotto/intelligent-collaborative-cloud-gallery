@@ -11,6 +11,7 @@ import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureVO;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 
 /**
 * @author yancenxin
@@ -95,4 +96,6 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser 登录用户对象
      */
     void checkPictureAuth(Picture picture, User loginUser);
+
+    List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser);
 }

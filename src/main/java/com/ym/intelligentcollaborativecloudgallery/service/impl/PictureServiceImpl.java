@@ -15,7 +15,6 @@ import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
 import com.ym.intelligentcollaborativecloudgallery.manager.CosManager;
-import com.ym.intelligentcollaborativecloudgallery.manager.FileManager;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.FilePictureUpload;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.PictureUploadTemplate;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.UrlPictureUpload;
@@ -31,6 +30,7 @@ import com.ym.intelligentcollaborativecloudgallery.service.PictureService;
 import com.ym.intelligentcollaborativecloudgallery.mapper.PictureMapper;
 import com.ym.intelligentcollaborativecloudgallery.service.SpaceService;
 import com.ym.intelligentcollaborativecloudgallery.service.UserService;
+import com.ym.intelligentcollaborativecloudgallery.utils.ColorSimilarUtil;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
@@ -42,17 +42,14 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.DigestUtils;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.awt.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Date;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -178,6 +175,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         picture.setPicFormat(uploadPictureResult.getPicFormat());
         picture.setThumbnailUrl(uploadPictureResult.getThumbnailUrl());
         picture.setUserId(loginUser.getId());
+        picture.setPicColor(uploadPictureResult.getPicColor());
         // 补充审核参数
         this.fillReviewParams(picture, loginUser);
         // 操作数据库
@@ -586,5 +584,46 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             ThrowUtils.throwIf(space == null, ErrorCode.PARAMS_ERROR, "空间不存在");
             spaceService.checkSpaceAuth(loginUser, space);
         }
+    }
+
+    /**
+     * 根据颜色搜索图片
+     * @param spaceId 空间 ID
+     * @param picColor 颜色值
+     * @param loginUser 登录用户
+     * @return 搜索到的图片列表
+     */
+    @Override
+    public List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser) {
+        // 1. 校验参数
+        ThrowUtils.throwIf(StrUtil.isBlank(picColor), ErrorCode.PARAMS_ERROR, "颜色值不能为空");
+        ThrowUtils.throwIf(spaceId == null, ErrorCode.PARAMS_ERROR, "空间ID不能为空");
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        // 2. 校验空间是否存在和具有权限
+        Space space = spaceService.getById(spaceId);
+        ThrowUtils.throwIf(space == null, ErrorCode.PARAMS_ERROR, "空间不存在");
+        spaceService.checkSpaceAuth(loginUser, space);
+        // 3. 查询图片
+        List<Picture> pictureList = this.lambdaQuery()
+                .eq(Picture::getSpaceId, spaceId)
+                .isNotNull(Picture::getPicColor)
+                .list();
+        if (CollUtil.isEmpty(pictureList)) {
+            return List.of();
+        }
+        // 将颜色字符串转为 color 对象进行比较
+        Color targetColor = Color.decode(picColor);
+        // 4. 根据颜色相似度进行筛选
+        return pictureList.stream()
+                .sorted(Comparator.comparingDouble(picture -> {
+                    if (StrUtil.isBlank(picture.getPicColor())) {
+                        return Double.MAX_VALUE;
+                    }
+                    Color pictureColor = Color.decode(picture.getPicColor());
+                    return -ColorSimilarUtil.calculateSimilarity(targetColor, pictureColor);
+                }))
+                .limit(20) // 限制返回数量为 20
+                .map(PictureVO::objToVo)
+                .collect(Collectors.toList());
     }
 }

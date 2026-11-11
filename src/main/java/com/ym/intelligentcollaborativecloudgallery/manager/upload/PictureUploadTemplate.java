@@ -13,6 +13,7 @@ import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.manager.CosManager;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.file.UploadPictureResult;
+import com.ym.intelligentcollaborativecloudgallery.utils.ColorTransformUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 
@@ -92,6 +93,7 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(imageInfo.getFormat());
         uploadPictureResult.setThumbnailUrl(thumbnailCiObject != null ? cosClientConfig.getHost() + '/' + thumbnailCiObject.getKey() : null);
+        uploadPictureResult.setPicColor(imageInfo.getAve());
         return uploadPictureResult;
     }
 
@@ -120,6 +122,7 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicHeight(picHeight);
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(imageInfo.getFormat());
+        uploadPictureResult.setPicColor(ColorTransformUtil.getStandardColor(imageInfo.getAve()));
         return uploadPictureResult;
     }
 
