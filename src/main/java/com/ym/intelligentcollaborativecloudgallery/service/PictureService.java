@@ -98,4 +98,11 @@ public interface PictureService extends IService<Picture> {
     void checkPictureAuth(Picture picture, User loginUser);
 
     List<PictureVO> searchPictureByColor(Long spaceId, String picColor, User loginUser);
+
+    /**
+     * 批量编辑图片
+     * @param pictureEditByBatchRequest 批量编辑图片请求对象
+     * @param loginUser 登录用户对象
+     */
+    void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser);
 }

@@ -40,6 +40,7 @@ import org.jsoup.select.Elements;
 import org.springframework.beans.BeanUtils;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.DigestUtils;
 
@@ -625,5 +626,67 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
                 .limit(20) // 限制返回数量为 20
                 .map(PictureVO::objToVo)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * 批量编辑图片
+     *
+     * @param pictureEditByBatchRequest 批量编辑图片请求对象
+     * @param loginUser                 登录用户对象
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser) {
+        // 1.获取和校验参数
+        ThrowUtils.throwIf(pictureEditByBatchRequest == null, ErrorCode.PARAMS_ERROR, "请求参数为空");
+        ThrowUtils.throwIf(CollUtil.isEmpty(pictureEditByBatchRequest.getPictureIdList()), ErrorCode.PARAMS_ERROR, "图片ID列表为空");
+        ThrowUtils.throwIf(loginUser == null, ErrorCode.NOT_LOGIN_ERROR, "用户未登录");
+        // 2.校验空间权限
+        Space space = spaceService.getById(pictureEditByBatchRequest.getSpaceId());
+        ThrowUtils.throwIf(space == null, ErrorCode.PARAMS_ERROR, "空间不存在");
+        spaceService.checkSpaceAuth(loginUser, space);
+        // 3.查询指定图片(仅选择需要的字段)
+        List<Picture> pictureList = this.lambdaQuery()
+                .select(Picture::getId,Picture::getSpaceId)
+                .eq(Picture::getSpaceId, pictureEditByBatchRequest.getSpaceId())
+                .in(Picture::getId, pictureEditByBatchRequest.getPictureIdList())
+                .list();
+        if (CollUtil.isEmpty(pictureList)) {
+            return;
+        }
+        // 4.更新分类和标签
+        pictureList.forEach(picture -> {
+            if (StrUtil.isNotBlank(pictureEditByBatchRequest.getCategory())) {
+                picture.setCategory(pictureEditByBatchRequest.getCategory());
+            }
+            if (CollUtil.isNotEmpty(pictureEditByBatchRequest.getTags())) {
+                picture.setTags(JSONUtil.toJsonStr(pictureEditByBatchRequest.getTags()));
+            }
+        });
+        // 批量重命名
+        String nameRule = pictureEditByBatchRequest.getNameRule();
+        fillPictureNameByRule(pictureList, nameRule);
+        // 5.操作数据库更新
+        boolean isSuccess = this.updateBatchById(pictureList);
+        ThrowUtils.throwIf(!isSuccess, ErrorCode.OPERATION_ERROR, "批量编辑图片失败");
+    }
+
+    /**
+     * nameRule 规则说明：图片{序号}
+     */
+    private void fillPictureNameByRule(List<Picture> pictureList, String nameRule) {
+        if (CollUtil.isEmpty(pictureList) || StrUtil.isBlank(nameRule)) {
+            return;
+        }
+        try {
+            for (int i = 0; i < pictureList.size(); i++) {
+                Picture picture = pictureList.get(i);
+                String newName = nameRule.replaceAll("\\{序号}", String.valueOf(i + 1));
+                picture.setName(newName);
+            }
+        } catch (Exception e) {
+            log.error("批量重命名图片失败", e);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "批量重命名图片失败");
+        }
     }
 }
