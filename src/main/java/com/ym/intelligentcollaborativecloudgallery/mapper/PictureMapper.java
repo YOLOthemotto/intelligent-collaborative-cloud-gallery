@@ -2,6 +2,8 @@ package com.ym.intelligentcollaborativecloudgallery.mapper;
 
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Picture;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.ResultMap;
+import org.apache.ibatis.annotations.Select;
 
 /**
 * @author yancenxin
@@ -11,6 +13,9 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 */
 public interface PictureMapper extends BaseMapper<Picture> {
 
+    @Select("SELECT * FROM picture WHERE id = #{id} AND isDelete = 0 FOR UPDATE")
+    @ResultMap("BaseResultMap")
+    Picture selectByIdForUpdate(long id);
 }
 
 
