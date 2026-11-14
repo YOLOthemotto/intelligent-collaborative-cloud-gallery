@@ -1,5 +1,7 @@
 package com.ym.intelligentcollaborativecloudgallery.service;
 
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.CreateOutPaintingTaskRequest;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.picture.*;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.PictureCursorVO;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -105,4 +107,10 @@ public interface PictureService extends IService<Picture> {
      * @param loginUser 登录用户对象
      */
     void editPictureByBatch(PictureEditByBatchRequest pictureEditByBatchRequest, User loginUser);
+
+    /**
+     * 创建扩图任务
+     * @param createOutPaintingTaskRequest 创建扩图任务请求对象
+     */
+    CreateOutPaintingTaskResponse createOutPaintingTask(CreatePictureOutPaintingTaskRequest createOutPaintingTaskRequest,User loginUser);
 }

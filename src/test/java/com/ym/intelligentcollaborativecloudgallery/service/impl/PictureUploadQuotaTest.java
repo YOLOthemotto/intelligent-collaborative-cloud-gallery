@@ -1,6 +1,7 @@
 package com.ym.intelligentcollaborativecloudgallery.service.impl;
 
 import com.ym.intelligentcollaborativecloudgallery.cache.CacheService;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.AliYunAiApi;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.manager.CosManager;
 import com.ym.intelligentcollaborativecloudgallery.manager.upload.FilePictureUpload;
@@ -44,7 +45,7 @@ class PictureUploadQuotaTest {
     @BeforeEach
     void setUp() {
         service = spy(new PictureServiceImpl(userService, fileUpload, mock(UrlPictureUpload.class),
-                mock(CacheService.class), mock(CosManager.class), spaceService, spaceMapper, transactions));
+                mock(CacheService.class), mock(CosManager.class), spaceService, spaceMapper, mock(AliYunAiApi.class), transactions));
         ReflectionTestUtils.setField(service, "baseMapper", pictureMapper);
         when(transactions.execute(any())).thenAnswer(invocation ->
                 ((TransactionCallback<?>) invocation.getArgument(0)).doInTransaction(null));

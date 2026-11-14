@@ -9,6 +9,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.AliYunAiApi;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.CreateOutPaintingTaskRequest;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.CreateOutPaintingTaskResponse;
 import com.ym.intelligentcollaborativecloudgallery.cache.CacheService;
 import com.ym.intelligentcollaborativecloudgallery.cache.CacheType;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
@@ -72,9 +75,11 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
     private final CosManager cosManager;
     private final SpaceService spaceService;
     private final SpaceMapper spaceMapper;
-    private TransactionTemplate transactionTemplate;
+    private final AliYunAiApi aliYunAiApi;
+    private final TransactionTemplate transactionTemplate;
 
-    private static final TypeReference<Page<PictureVO>> PICTURE_VO_PAGE_TYPE = new TypeReference<>() {};
+    private static final TypeReference<Page<PictureVO>> PICTURE_VO_PAGE_TYPE = new TypeReference<>() {
+    };
 
     @Override
     public void validPicture(Picture picture) {
@@ -611,8 +616,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
 
     /**
      * 根据颜色搜索图片
-     * @param spaceId 空间 ID
-     * @param picColor 颜色值
+     *
+     * @param spaceId   空间 ID
+     * @param picColor  颜色值
      * @param loginUser 登录用户
      * @return 搜索到的图片列表
      */
@@ -669,7 +675,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         spaceService.checkSpaceAuth(loginUser, space);
         // 3.查询指定图片(仅选择需要的字段)
         List<Picture> pictureList = this.lambdaQuery()
-                .select(Picture::getId,Picture::getSpaceId)
+                .select(Picture::getId, Picture::getSpaceId)
                 .eq(Picture::getSpaceId, pictureEditByBatchRequest.getSpaceId())
                 .in(Picture::getId, pictureEditByBatchRequest.getPictureIdList())
                 .list();
@@ -691,6 +697,39 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         // 5.操作数据库更新
         boolean isSuccess = this.updateBatchById(pictureList);
         ThrowUtils.throwIf(!isSuccess, ErrorCode.OPERATION_ERROR, "批量编辑图片失败");
+    }
+
+    /**
+     * 创建扩图任务
+     *
+     * @param createOutPaintingTaskRequest 创建扩图任务请求对象
+     */
+    @Override
+    public CreateOutPaintingTaskResponse createOutPaintingTask(CreatePictureOutPaintingTaskRequest createOutPaintingTaskRequest,User loginUser) {
+        // 获取图片信息
+        Long pictureId = createOutPaintingTaskRequest.getPictureId();
+        Picture picture = Optional.ofNullable(this.getById(pictureId))
+                .orElseThrow(() -> new BusinessException(ErrorCode.PARAMS_ERROR, "图片不存在"));
+        // 校验权限
+        checkPictureAuth(picture, loginUser);
+        if ((picture.getPicWidth() != null && (picture.getPicWidth() < 512 || picture.getPicWidth() > 4096))
+                || (picture.getPicHeight() != null && (picture.getPicHeight() < 512 || picture.getPicHeight() > 4096))) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "扩图原图的宽高须在 512 至 4096 像素之间");
+        }
+        if (picture.getPicSize() != null && picture.getPicSize() > 10 * 1024 * 1024L) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "扩图原图不能超过 10MB");
+        }
+        if (StrUtil.isBlank(picture.getUrl()) || !picture.getUrl().matches("^https?://[^\\s\\p{IsHan}]+$")) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "扩图原图须为不含中文的公网 HTTP(S) URL");
+        }
+        // 创建扩图任务请求对象
+        CreateOutPaintingTaskRequest request = new CreateOutPaintingTaskRequest();
+        CreateOutPaintingTaskRequest.Input input = new CreateOutPaintingTaskRequest.Input();
+        input.setImageUrl(picture.getUrl());
+        request.setInput(input);
+        request.setParameters(createOutPaintingTaskRequest.getParameters());
+        // 调用阿里云AI接口创建扩图任务
+        return aliYunAiApi.createOutPaintingTask(request);
     }
 
     /**

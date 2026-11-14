@@ -3,6 +3,10 @@ package com.ym.intelligentcollaborativecloudgallery.controller;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.ym.intelligentcollaborativecloudgallery.annotation.AuthCheck;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.AliYunAiApi;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.CreateOutPaintingTaskRequest;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.CreateOutPaintingTaskResponse;
+import com.ym.intelligentcollaborativecloudgallery.api.aliyunai.model.GetOutPaintingTaskResponse;
 import com.ym.intelligentcollaborativecloudgallery.api.imageSerach.ImageSearchApiFacade;
 import com.ym.intelligentcollaborativecloudgallery.api.imageSerach.model.ImageSearchResult;
 import com.ym.intelligentcollaborativecloudgallery.cache.CacheType;
@@ -43,6 +47,7 @@ public class PictureController {
     private final PictureService pictureService;
     private final UserService userService;
     private final SpaceService spaceService;
+    private final AliYunAiApi aliYunAiApi;
 
     /**
      * 上传图片（可重新上传）
@@ -342,4 +347,24 @@ public class PictureController {
         return ResultUtils.success(true);
     }
 
+    /**
+     *  创建 AI 扩图任务
+     */
+    @PostMapping("/ai/outpainting/createTask")
+    public BaseResponse<CreateOutPaintingTaskResponse> createOutPaintingTask(@RequestBody CreatePictureOutPaintingTaskRequest createOutPaintingTaskRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(createOutPaintingTaskRequest == null || createOutPaintingTaskRequest.getPictureId() == null || createOutPaintingTaskRequest.getPictureId() <= 0, ErrorCode.PARAMS_ERROR);
+        User loginUser = userService.getLoginUser(request);
+        CreateOutPaintingTaskResponse response = pictureService.createOutPaintingTask(createOutPaintingTaskRequest, loginUser);
+        return ResultUtils.success(response);
+    }
+
+    /**
+     *  查询 AI 扩图任务结果
+     */
+    @GetMapping("/ai/outpainting/getTask")
+    public BaseResponse<GetOutPaintingTaskResponse> getOutPaintingTask(@RequestParam String taskId, HttpServletRequest request) {
+        ThrowUtils.throwIf(taskId == null || taskId.isEmpty(), ErrorCode.PARAMS_ERROR);
+        GetOutPaintingTaskResponse response = aliYunAiApi.getOutPaintingTask(taskId);
+        return ResultUtils.success(response);
+    }
 }
