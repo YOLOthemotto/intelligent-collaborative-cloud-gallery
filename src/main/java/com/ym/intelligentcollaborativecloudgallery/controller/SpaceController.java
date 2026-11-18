@@ -9,6 +9,7 @@ import com.ym.intelligentcollaborativecloudgallery.constant.UserConstant;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
+import com.ym.intelligentcollaborativecloudgallery.manager.auth.SpaceUserAuthManager;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.space.*;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Space;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
@@ -40,6 +41,9 @@ public class SpaceController {
 
     @Resource
     private SpaceService spaceService;
+
+    @Resource
+    private SpaceUserAuthManager spaceUserAuthManager;
 
     @PostMapping("/add")
     public BaseResponse<Long> addSpace(@RequestBody SpaceAddRequest spaceAddRequest, HttpServletRequest request) {
@@ -124,8 +128,8 @@ public class SpaceController {
         ThrowUtils.throwIf(space == null, ErrorCode.NOT_FOUND_ERROR);
         SpaceVO spaceVO = spaceService.getSpaceVO(space, request);
         User loginUser = userService.getLoginUser(request);
-        // 仅本人或管理员可查看
-        spaceService.checkSpaceAuth(loginUser, space);
+        List<String> permissions = spaceUserAuthManager.getPermissionList(space, loginUser);
+        spaceVO.setPermissionList(permissions);
         // 获取封装类
         return ResultUtils.success(spaceVO);
     }

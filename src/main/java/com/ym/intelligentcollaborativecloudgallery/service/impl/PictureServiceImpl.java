@@ -396,7 +396,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture oldPicture = this.getById(id);
         ThrowUtils.throwIf(oldPicture == null, ErrorCode.NOT_FOUND_ERROR);
         // 校验权限
-        this.checkPictureAuth(oldPicture, loginUser);
+//        this.checkPictureAuth(oldPicture, loginUser);
         // 操作数据库
         boolean result = this.updateById(picture);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
@@ -416,7 +416,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture oldPicture = transactionTemplate.execute(status -> {
             Picture currentPicture = baseMapper.selectByIdForUpdate(pictureId);
             ThrowUtils.throwIf(currentPicture == null, ErrorCode.NOT_FOUND_ERROR);
-            this.checkPictureAuth(currentPicture, loginUser);
+            // this.checkPictureAuth(currentPicture, loginUser);
             if (currentPicture.getSpaceId() != null) {
                 updateSpaceUsage(currentPicture.getSpaceId(), -1, -requirePictureSize(currentPicture));
             }
@@ -711,7 +711,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         Picture picture = Optional.ofNullable(this.getById(pictureId))
                 .orElseThrow(() -> new BusinessException(ErrorCode.PARAMS_ERROR, "图片不存在"));
         // 校验权限
-        checkPictureAuth(picture, loginUser);
+//        checkPictureAuth(picture, loginUser);
         if ((picture.getPicWidth() != null && (picture.getPicWidth() < 512 || picture.getPicWidth() > 4096))
                 || (picture.getPicHeight() != null && (picture.getPicHeight() < 512 || picture.getPicHeight() > 4096))) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "扩图原图的宽高须在 512 至 4096 像素之间");
