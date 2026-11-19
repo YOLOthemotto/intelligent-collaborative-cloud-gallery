@@ -77,7 +77,7 @@ public class SpaceServiceImpl extends ServiceImpl<SpaceMapper, Space>
         Long userId = loginUser.getId();
         space.setUserId(userId);
         if (SpaceLevelEnum.COMMON.getValue() != space.getSpaceLevel() && !userService.isAdmin(loginUser)) {
-            throw new BusinessException(ErrorCode.NO_AUTH_ERROR,"无权创建指定级别的空间");
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR, "无权创建指定级别的空间");
         }
         // 4.控制同一用户只能创建一个私有空间、以及一个团队空间
         String lockKey = String.valueOf(userId).intern();

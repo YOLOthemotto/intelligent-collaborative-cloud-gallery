@@ -1,5 +1,6 @@
 package com.ym.intelligentcollaborativecloudgallery.model.entity;
 
+import cn.dev33.satoken.json.SaJsonType;
 import com.baomidou.mybatisplus.annotation.*;
 
 import java.io.Serializable;
@@ -12,7 +13,7 @@ import lombok.Data;
  */
 @TableName(value ="user")
 @Data
-public class User implements Serializable {
+public class User implements Serializable, SaJsonType {
 
     @TableField(exist = false)
     private static final long serialVersionUID = 1L;
