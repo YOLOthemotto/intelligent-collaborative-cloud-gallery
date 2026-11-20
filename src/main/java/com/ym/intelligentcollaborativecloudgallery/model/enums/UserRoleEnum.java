@@ -15,7 +15,11 @@ public enum UserRoleEnum {
     /**
      * 管理员
      */
-    ADMIN("管理员", "admin");
+    ADMIN("管理员", "admin"),
+    /**
+     * 禁用用户
+     */
+    BAN("禁用用户", "ban");
 
     private final String text;
     private final String value;

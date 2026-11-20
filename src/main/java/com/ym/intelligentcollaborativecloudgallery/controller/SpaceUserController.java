@@ -10,10 +10,12 @@ import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
 import com.ym.intelligentcollaborativecloudgallery.manager.auth.annotation.SaSpaceCheckPermission;
 import com.ym.intelligentcollaborativecloudgallery.manager.auth.model.SpaceUserPermissionConstant;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserAddRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserCandidateQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserEditRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.SpaceUser;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
+import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceUserCandidateVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceUserVO;
 import com.ym.intelligentcollaborativecloudgallery.service.SpaceUserService;
 import com.ym.intelligentcollaborativecloudgallery.service.UserService;
@@ -51,6 +53,18 @@ public class SpaceUserController {
         ThrowUtils.throwIf(spaceUserAddRequest == null, ErrorCode.PARAMS_ERROR);
         long id = spaceUserService.addSpaceUser(spaceUserAddRequest);
         return ResultUtils.success(id);
+    }
+
+    /**
+     * 查询可添加为空间成员的用户
+     */
+    @PostMapping("/list/candidate")
+    public BaseResponse<List<SpaceUserCandidateVO>> listCandidateUsers(
+            @RequestBody SpaceUserCandidateQueryRequest queryRequest,
+            HttpServletRequest request) {
+        userService.getLoginUser(request);
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        return ResultUtils.success(spaceUserService.listCandidateUsers(queryRequest));
     }
 
     /**

@@ -3,18 +3,23 @@ package com.ym.intelligentcollaborativecloudgallery.service.impl;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import com.ym.intelligentcollaborativecloudgallery.exception.BusinessException;
 import com.ym.intelligentcollaborativecloudgallery.exception.ErrorCode;
 import com.ym.intelligentcollaborativecloudgallery.exception.ThrowUtils;
 import com.ym.intelligentcollaborativecloudgallery.mapper.SpaceUserMapper;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserAddRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserCandidateQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.Space;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.SpaceUser;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.User;
 import com.ym.intelligentcollaborativecloudgallery.model.enums.SpaceRoleEnum;
+import com.ym.intelligentcollaborativecloudgallery.model.enums.UserRoleEnum;
+import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceUserCandidateVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceUserVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.UserVO;
@@ -38,6 +43,8 @@ import java.util.stream.Collectors;
 public class SpaceUserServiceImpl extends ServiceImpl<SpaceUserMapper, SpaceUser>
         implements SpaceUserService {
 
+    private static final int MAX_CANDIDATE_USER_LIMIT = 50;
+
     @Resource
     private UserService userService;
 
@@ -56,6 +63,38 @@ public class SpaceUserServiceImpl extends ServiceImpl<SpaceUserMapper, SpaceUser
         boolean result = this.save(spaceUser);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return spaceUser.getId();
+    }
+
+    @Override
+    public List<SpaceUserCandidateVO> listCandidateUsers(SpaceUserCandidateQueryRequest queryRequest) {
+        ThrowUtils.throwIf(queryRequest == null, ErrorCode.PARAMS_ERROR);
+        Integer limit = queryRequest.getLimit() == null ? 20 : queryRequest.getLimit();
+        ThrowUtils.throwIf(limit < 1 || limit > MAX_CANDIDATE_USER_LIMIT, ErrorCode.PARAMS_ERROR,
+                "返回数量必须在 1 到 " + MAX_CANDIDATE_USER_LIMIT + " 之间");
+        String userName = queryRequest.getUserName();
+        ThrowUtils.throwIf(userName != null && userName.length() > 256, ErrorCode.PARAMS_ERROR,
+                "用户昵称长度不能超过 256 位");
+        Long spaceId = queryRequest.getSpaceId();
+        ThrowUtils.throwIf(spaceId != null && spaceId <= 0, ErrorCode.PARAMS_ERROR, "空间 ID 不合法");
+
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "userName", "userAvatar")
+                .like(StrUtil.isNotBlank(userName), "userName", userName)
+                .eq("isDelete", 0)
+                .ne("userRole", UserRoleEnum.BAN.getValue())
+                .apply(spaceId != null,
+                        "id NOT IN (SELECT userId FROM space_user WHERE spaceId = {0})", spaceId)
+                .orderByAsc("userName")
+                .orderByAsc("id");
+
+        Page<User> userPage = userService.page(new Page<>(1, limit), queryWrapper);
+        return userPage.getRecords().stream().map(user -> {
+            SpaceUserCandidateVO candidate = new SpaceUserCandidateVO();
+            candidate.setId(user.getId());
+            candidate.setUserName(user.getUserName());
+            candidate.setUserAvatar(user.getUserAvatar());
+            return candidate;
+        }).collect(Collectors.toList());
     }
 
     @Override

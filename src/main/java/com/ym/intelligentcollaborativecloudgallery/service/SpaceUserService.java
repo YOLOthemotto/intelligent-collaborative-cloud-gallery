@@ -3,8 +3,10 @@ package com.ym.intelligentcollaborativecloudgallery.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.spring.service.IService;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserAddRequest;
+import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserCandidateQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.dto.spaceuser.SpaceUserQueryRequest;
 import com.ym.intelligentcollaborativecloudgallery.model.entity.SpaceUser;
+import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceUserCandidateVO;
 import com.ym.intelligentcollaborativecloudgallery.model.vo.SpaceUserVO;
 
 import javax.servlet.http.HttpServletRequest;
@@ -20,6 +22,14 @@ public interface SpaceUserService extends IService<SpaceUser> {
      * @return
      */
     long addSpaceUser(SpaceUserAddRequest spaceUserAddRequest);
+
+    /**
+     * 查询可添加为空间成员的用户
+     *
+     * @param queryRequest 查询请求
+     * @return 候选用户列表
+     */
+    List<SpaceUserCandidateVO> listCandidateUsers(SpaceUserCandidateQueryRequest queryRequest);
 
     /**
      * 校验空间成员
