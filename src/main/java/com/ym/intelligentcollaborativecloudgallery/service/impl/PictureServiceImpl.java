@@ -118,9 +118,9 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
             Picture picture = this.getById(pictureId);
             ThrowUtils.throwIf(picture == null, ErrorCode.PARAMS_ERROR, "图片不存在");
             // 仅管理员或本人可更新
-            if (!userService.isAdmin(loginUser) && !picture.getUserId().equals(loginUser.getId())) {
-                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
-            }
+//            if (!userService.isAdmin(loginUser) && !picture.getUserId().equals(loginUser.getId())) {
+//                throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+//            }
             // 校验空间是否一致
             if (spaceId == null) {
                 spaceId = picture.getSpaceId();
@@ -131,7 +131,7 @@ public class PictureServiceImpl extends ServiceImpl<PictureMapper, Picture>
         if (spaceId != null) {
             Space space = spaceService.getById(spaceId);
             ThrowUtils.throwIf(space == null, ErrorCode.PARAMS_ERROR, "空间不存在");
-            spaceService.checkSpaceAuth(loginUser, space);
+//            spaceService.checkSpaceAuth(loginUser, space);
         }
         final Long resolvedSpaceId = spaceId;
         // 上传图片,得到图片信息
