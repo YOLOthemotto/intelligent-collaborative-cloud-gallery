@@ -14,6 +14,11 @@ import lombok.NoArgsConstructor;
 public class PictureEditResponseMessage {
 
     /**
+     * 对应的前端请求唯一标识
+     */
+    private String requestId;
+
+    /**
      * 消息类型，例如 "INFO", "ERROR", "ENTER_EDIT", "EXIT_EDIT", "EDIT_ACTION"
      */
     private String type;
@@ -24,6 +29,11 @@ public class PictureEditResponseMessage {
     private String message;
 
     /**
+     * 请求是否成功执行
+     */
+    private Boolean success;
+
+    /**
      * 执行的编辑动作
      */
     private String editAction;
@@ -32,4 +42,14 @@ public class PictureEditResponseMessage {
      * 用户信息
      */
     private UserVO user;
+
+    /**
+     * 当前锁持有者
+     */
+    private PictureEditEditor editor;
+
+    /**
+     * 当前完整画面状态
+     */
+    private PictureEditState state;
 }

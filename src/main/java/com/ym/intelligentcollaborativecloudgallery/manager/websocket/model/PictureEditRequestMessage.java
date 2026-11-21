@@ -13,6 +13,11 @@ import lombok.NoArgsConstructor;
 public class PictureEditRequestMessage {
 
     /**
+     * 前端请求唯一标识
+     */
+    private String requestId;
+
+    /**
      * 消息类型，例如 "ENTER_EDIT", "EXIT_EDIT", "EDIT_ACTION"
      */
     private String type;
